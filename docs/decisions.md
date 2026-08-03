@@ -4,7 +4,7 @@ Record of product and technical decisions for this repo.
 
 | ID | Decision | Status | Notes |
 | --- | --- | --- | --- |
-| D1 | Web search provider | Open | Candidates: Tavily, Brave, SerpAPI, Bing. Needed before M2. |
+| D1 | Web search provider | Accepted | **Tavily**. |
 | D2 | API auth (MVP) | Accepted | API key via `X-API-Key` or `Authorization: Bearer`. |
 | D3 | Package manager | Accepted | **uv** with `pyproject.toml`. |
 | D4 | Report formats | Accepted | Structured JSON and Markdown. |
