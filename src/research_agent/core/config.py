@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o"
     openai_model_cheap: str = "gpt-4o-mini"
+    openai_base_url: str | None = None
+
+    tavily_api_key: str = ""
 
     max_tool_calls: int = 12
     max_gather_iterations: int = 5

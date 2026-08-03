@@ -7,16 +7,18 @@ API service that turns a business research brief into a sourced, structured repo
 | Language | Python 3.12+ |
 | Packaging | [uv](https://docs.astral.sh/uv/) |
 | Orchestration | LangGraph |
-| LLM | OpenAI |
+| LLM | OpenAI (optional OpenAI-compatible `OPENAI_BASE_URL`) |
+| Search | Tavily |
 | HTTP API | FastAPI |
 | Database | PostgreSQL |
 
 ## Capabilities
 
 - Accept a research brief (topic, goals, constraints, audience, depth).
-- Plan and execute a bounded research workflow (search → extract → synthesize → cite).
-- Return a JSON report plus Markdown, with source URLs.
-- Persist runs, sources, and checkpoints for audit and resume.
+- Authenticate `/v1` routes with an API key (`API_KEYS` in `.env` — a shared secret you set).
+- Plan searches, gather evidence via Tavily, synthesize a cited report with OpenAI.
+- Return structured JSON and Markdown, with source URLs.
+- Persist runs, sources, and reports in PostgreSQL.
 
 ## Docs
 
@@ -37,14 +39,17 @@ Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/), Docker.
 
 ```bash
 cp .env.example .env
+# Set OPENAI_API_KEY, TAVILY_API_KEY, and API_KEYS (your own shared secret)
 uv sync
 docker compose up --build
 ```
 
 - API: http://localhost:8000
-- OpenAPI: http://localhost:8000/docs
+- OpenAPI: http://localhost:8000/docs — use **Authorize** with the same value as `API_KEYS`
 - Health: `GET /health`
 - Readiness (DB): `GET /ready`
+
+Day-to-day: `docker compose up` (add `--build` after dependency or Dockerfile changes). `docker compose down` to stop.
 
 ### Run API without Docker (DB still via Compose)
 
@@ -60,6 +65,16 @@ uv run uvicorn research_agent.main:app --reload --port 8000
 uv run pytest
 ```
 
-## Current milestone
+### Example research request
 
-**M1 — Application skeleton** is in place: FastAPI health/ready, Postgres models, Alembic, Compose. Research endpoints and LangGraph arrive in M2.
+```bash
+curl -X POST http://localhost:8000/v1/research/runs \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d "{\"topic\":\"Mid-market CRM competitive landscape\",\"goals\":[\"Top competitors\",\"Pricing signals\"],\"depth\":\"quick\"}"
+```
+
+```bash
+curl http://localhost:8000/v1/research/runs/RUN_ID -H "X-API-Key: YOUR_API_KEY"
+curl http://localhost:8000/v1/research/runs/RUN_ID/result -H "X-API-Key: YOUR_API_KEY"
+```
