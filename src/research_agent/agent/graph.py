@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
 from research_agent.agent.nodes import (
@@ -12,9 +13,10 @@ from research_agent.agent.nodes import (
 from research_agent.agent.state import ResearchState
 
 _graph = None
+_graph_with_checkpoint = None
 
 
-def build_research_graph():
+def build_research_graph(checkpointer: BaseCheckpointSaver | None = None):
     graph = StateGraph(ResearchState)
     graph.add_node("normalize_brief", normalize_brief)
     graph.add_node("plan_research", plan_research)
@@ -28,11 +30,24 @@ def build_research_graph():
     graph.add_edge("gather_evidence", "synthesize_report")
     graph.add_edge("synthesize_report", "finalize_report")
     graph.add_edge("finalize_report", END)
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)
 
 
-def get_research_graph():
-    global _graph
+def get_research_graph(checkpointer: BaseCheckpointSaver | None = None):
+    """Return a compiled graph. Pass a checkpointer for durable runs."""
+    global _graph, _graph_with_checkpoint
+
+    if checkpointer is not None:
+        if _graph_with_checkpoint is None:
+            _graph_with_checkpoint = build_research_graph(checkpointer=checkpointer)
+        return _graph_with_checkpoint
+
     if _graph is None:
         _graph = build_research_graph()
     return _graph
+
+
+def reset_research_graph() -> None:
+    global _graph, _graph_with_checkpoint
+    _graph = None
+    _graph_with_checkpoint = None

@@ -110,6 +110,28 @@ Response `202 Accepted`:
 - `404` if the run does not exist
 - Failed runs: use the status endpoint (`error_message`); do not return a fake success body here
 
+## Resume run
+
+### `POST /v1/research/runs/{run_id}/resume`
+
+Continues a `failed` or `cancelled` run from the last LangGraph checkpoint (`thread_id` = `run_id`).
+
+Response `202`:
+
+```json
+{
+  "run_id": "...",
+  "status": "queued",
+  "created_at": "...",
+  "started_at": "...",
+  "finished_at": null,
+  "error_message": null
+}
+```
+
+- `409` if already `completed` or currently `running`
+- `404` if unknown run
+
 ## Cancel run
 
 ### `POST /v1/research/runs/{run_id}/cancel`
@@ -141,4 +163,4 @@ Breaking changes go to `/v2`. Additive fields on `/v1` are allowed when backward
 1. Create a run.
 2. Poll status every 2–5 seconds (back off after ~30s).
 3. Fetch the result when status is `completed`.
-4. On `failed`, read `error_message` before deciding whether to retry.
+4. On `failed`, read `error_message`; optionally `POST .../resume` to continue from checkpoint.

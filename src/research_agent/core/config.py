@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     api_keys: str = Field(default="dev-local-key-change-me")
 
     database_url: str = (
-        "postgresql+asyncpg://research:research@localhost:5432/research_agent"
+        "postgresql+psycopg://research:research@localhost:5432/research_agent"
     )
 
     openai_api_key: str = ""
