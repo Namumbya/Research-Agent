@@ -43,7 +43,7 @@ async def create_run(
         status=RunStatus.queued.value,
         brief=_brief_dict(brief),
         model_config_json={
-            "openai_model": settings.openai_model,
+            "llm_model": settings.llm_model,
             "max_tool_calls": settings.max_tool_calls,
             "max_gather_iterations": settings.max_gather_iterations,
             "max_search_results": settings.max_search_results,
@@ -180,6 +180,8 @@ async def execute_research_run(run_id: uuid.UUID, *, resume: bool = False) -> No
                         "heading": section.get("heading"),
                         "content": section.get("content"),
                         "citations": citations,
+                        "verified": section.get("verified"),
+                        "unsupported_claims": section.get("unsupported_claims") or [],
                     }
                 )
 

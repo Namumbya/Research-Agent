@@ -8,9 +8,10 @@ LangGraph workflow for research runs. The graph is intentional and budgeted — 
 START
   → normalize_brief
   → plan_research
-  → gather_loop  ←──┐
-  → synthesize      │  until plan complete or budget hit
-  → cite_and_verify ┘  may request gap-fill
+  → gather_evidence      (search; budgeted)
+  → fetch_pages          (read seed URLs + top hits; SSRF-safe)
+  → synthesize_report
+  → cite_and_verify      (cheap model checks each section against cited text)
   → finalize_report
 END
 ```
@@ -63,8 +64,8 @@ Later candidates: `internal_rag_search`, `crm_lookup`, time-bounded news APIs.
 
 | Step | Tier |
 | --- | --- |
-| Plan, synthesize, verify | Primary model (`OPENAI_MODEL`) |
-| Query rewrite / extract | Optional cheaper model (`OPENAI_MODEL_CHEAP`) |
+| Plan, verify | Cheap model (`LLM_MODEL_CHEAP`) |
+| Synthesize | Primary model (`LLM_MODEL`) |
 
 Use low temperature (0–0.3) for factual research.
 
@@ -90,3 +91,10 @@ Golden briefs should assert:
 - No fabricated URLs
 
 Offline evals should run before adding new tools or changing synthesis prompts.
+
+## Status of verification and evals
+
+- `cite_and_verify` flags sections with no citation or with claims the cited text does not support
+  (`verified: false`, `unsupported_claims`) and lists them under risks/unknowns. Gap-fill re-gathering is not built.
+- Offline checks live in `research_agent.evals.checks`; live golden briefs run with
+  `python -m research_agent.evals.run` (needs LLM and Tavily keys).

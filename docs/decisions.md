@@ -12,5 +12,7 @@ Record of product and technical decisions for this repo.
 | D6 | Git ticket prefix | Open | Required only if org branch/commit rulesets are enforced. |
 | D7 | Local stack | Accepted | Docker Compose for API + PostgreSQL. |
 | D8 | Python version | Accepted | **3.12+** (pin `.python-version` to 3.12; `uv init` defaulted to 3.14). |
+| D9 | LLM provider | Accepted | Any OpenAI-compatible endpoint via `LLM_BASE_URL`; cheap model for plan/verify. |
+| D10 | Page reading | Accepted | `fetch_url` with public-IP checks on every redirect hop, 1 MB cap, text/HTML only. |
 
 When a row moves from Open → Accepted, update this table and adjust dependent docs if behavior changed.

@@ -7,7 +7,7 @@ API service that turns a business research brief into a sourced, structured repo
 | Language | Python 3.12+ |
 | Packaging | [uv](https://docs.astral.sh/uv/) |
 | Orchestration | LangGraph |
-| LLM | OpenAI (optional OpenAI-compatible `OPENAI_BASE_URL`) |
+| LLM | Any OpenAI-compatible provider via `LLM_BASE_URL` (OpenAI, Gemini, Groq, DeepSeek, OpenRouter) |
 | Search | Tavily |
 | HTTP API | FastAPI |
 | Database | PostgreSQL |
@@ -40,7 +40,7 @@ Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/), Docker.
 
 ```bash
 cp .env.example .env
-# Set OPENAI_API_KEY, TAVILY_API_KEY, and API_KEYS (your own shared secret)
+# Set LLM_API_KEY, TAVILY_API_KEY, and API_KEYS (your own shared secret)
 uv sync
 docker compose up --build
 ```
