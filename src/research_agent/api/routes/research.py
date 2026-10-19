@@ -126,3 +126,60 @@ async def get_research_run_result(
             for source in run.sources
         ],
     )
+
+
+@router.post("/runs/{run_id}/resume", response_model=RunStatusResponse, status_code=status.HTTP_202_ACCEPTED)
+async def resume_research_run(
+    run_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+    _: str = Depends(require_api_key),
+) -> RunStatusResponse:
+    """Continue a failed or interrupted run from its LangGraph checkpoint."""
+    run = await get_run(session, run_id)
+    if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "not_found",
+                    "message": "Run not found",
+                    "details": {},
+                }
+            },
+        )
+
+    if run.status == RunStatus.completed.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "already_completed",
+                    "message": "Run already completed",
+                    "details": {},
+                }
+            },
+        )
+
+    if run.status == RunStatus.running.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "already_running",
+                    "message": "Run is already running",
+                    "details": {},
+                }
+            },
+        )
+
+    background_tasks.add_task(execute_research_run, run.id, resume=True)
+    return RunStatusResponse(
+        run_id=run.id,
+        status=RunStatus.queued.value,
+        created_at=run.created_at,
+        started_at=run.started_at,
+        finished_at=run.finished_at,
+        error_message=None,
+        progress=None,
+    )

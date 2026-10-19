@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,13 +17,24 @@ class Settings(BaseSettings):
     api_keys: str = Field(default="dev-local-key-change-me")
 
     database_url: str = (
-        "postgresql+asyncpg://research:research@localhost:5432/research_agent"
+        "postgresql+psycopg://research:research@localhost:5432/research_agent"
     )
 
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o"
-    openai_model_cheap: str = "gpt-4o-mini"
-    openai_base_url: str | None = None
+    # Any OpenAI-compatible provider works (OpenAI, Gemini, Groq, DeepSeek, OpenRouter).
+    # The legacy OPENAI_* names are still accepted.
+    llm_api_key: str = Field(
+        default="", validation_alias=AliasChoices("LLM_API_KEY", "OPENAI_API_KEY")
+    )
+    llm_model: str = Field(
+        default="gpt-4o-mini", validation_alias=AliasChoices("LLM_MODEL", "OPENAI_MODEL")
+    )
+    llm_model_cheap: str = Field(
+        default="gpt-4o-mini",
+        validation_alias=AliasChoices("LLM_MODEL_CHEAP", "OPENAI_MODEL_CHEAP"),
+    )
+    llm_base_url: str | None = Field(
+        default=None, validation_alias=AliasChoices("LLM_BASE_URL", "OPENAI_BASE_URL")
+    )
 
     tavily_api_key: str = ""
 
@@ -31,6 +42,9 @@ class Settings(BaseSettings):
     max_gather_iterations: int = 5
     max_run_minutes: int = 5
     max_search_results: int = 5
+    max_page_fetches: int = 6
+    page_fetch_chars: int = 6000
+    verify_claims: bool = True
 
     @property
     def api_key_set(self) -> set[str]:

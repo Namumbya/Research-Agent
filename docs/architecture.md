@@ -48,7 +48,8 @@ Client / automation
 
 - Application schema: runs, reports, sources, events.
 - Checkpoint schema: owned by LangGraph’s Postgres checkpointer.
-- Async access via `asyncpg` (SQLAlchemy async session layer expected).
+- Application database access uses SQLAlchemy + Alembic with the `psycopg` driver.
+- LangGraph checkpoints use the same PostgreSQL database through `psycopg`.
 
 ### Observability
 
@@ -58,9 +59,10 @@ Client / automation
 ## Request lifecycle
 
 1. `POST /v1/research/runs` → `202` with `run_id`.
-2. Background execution starts the graph (in-process for MVP).
+2. Background execution starts the graph (in-process for MVP) with Postgres checkpointer (`thread_id` = `run_id`).
 3. Client polls `GET /v1/research/runs/{run_id}`.
 4. On `completed`, client loads `GET /v1/research/runs/{run_id}/result`.
+5. On `failed` (or after a crash that left checkpoints), client may call `POST /v1/research/runs/{run_id}/resume` to continue from the last checkpoint.
 
 MVP runs jobs in-process (FastAPI background tasks / asyncio). The service interface should allow a later move to a dedicated worker (Arq, Celery, or similar) without rewriting the API.
 

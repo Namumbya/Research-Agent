@@ -5,10 +5,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from research_agent.agent.checkpoint import get_checkpointer
 from research_agent.agent.graph import get_research_graph
 from research_agent.core.config import get_settings
 from research_agent.db.models import ResearchReport, ResearchRun, ResearchSource, RunStatus
@@ -42,7 +43,7 @@ async def create_run(
         status=RunStatus.queued.value,
         brief=_brief_dict(brief),
         model_config_json={
-            "openai_model": settings.openai_model,
+            "llm_model": settings.llm_model,
             "max_tool_calls": settings.max_tool_calls,
             "max_gather_iterations": settings.max_gather_iterations,
             "max_search_results": settings.max_search_results,
@@ -68,33 +69,44 @@ async def get_run(session: AsyncSession, run_id: uuid.UUID) -> ResearchRun | Non
     return result.scalar_one_or_none()
 
 
-async def execute_research_run(run_id: uuid.UUID) -> None:
+async def execute_research_run(run_id: uuid.UUID, *, resume: bool = False) -> None:
     async with AsyncSessionLocal() as session:
         run = await get_run(session, run_id)
         if run is None:
             logger.error("Run %s not found", run_id)
             return
 
+        if resume and run.status == RunStatus.completed.value:
+            logger.info("Run %s already completed; skip resume", run_id)
+            return
+
         run.status = RunStatus.running.value
-        run.started_at = datetime.now(timezone.utc)
+        if run.started_at is None:
+            run.started_at = datetime.now(timezone.utc)
         run.error_message = None
         await session.commit()
 
         try:
-            graph = get_research_graph()
-            final_state = await graph.ainvoke(
-                {
-                    "run_id": str(run_id),
-                    "brief": run.brief,
-                    "plan": [],
-                    "evidence": [],
-                    "report": None,
-                    "report_markdown": None,
-                    "error": None,
-                    "meta": {},
-                    "current_node": "start",
-                }
-            )
+            checkpointer = await get_checkpointer()
+            graph = get_research_graph(checkpointer=checkpointer)
+            config = {"configurable": {"thread_id": str(run_id)}}
+            if resume:
+                final_state = await graph.ainvoke(None, config=config)
+            else:
+                final_state = await graph.ainvoke(
+                    {
+                        "run_id": str(run_id),
+                        "brief": run.brief,
+                        "plan": [],
+                        "evidence": [],
+                        "report": None,
+                        "report_markdown": None,
+                        "error": None,
+                        "meta": {},
+                        "current_node": "start",
+                    },
+                    config=config,
+                )
 
             error = final_state.get("error")
             report = final_state.get("report")
@@ -113,6 +125,13 @@ async def execute_research_run(run_id: uuid.UUID) -> None:
                 run.finished_at = datetime.now(timezone.utc)
                 await session.commit()
                 return
+
+            await session.execute(
+                delete(ResearchSource).where(ResearchSource.run_id == run_id)
+            )
+            await session.execute(
+                delete(ResearchReport).where(ResearchReport.run_id == run_id)
+            )
 
             for item in evidence:
                 url = item.get("url")
@@ -161,6 +180,8 @@ async def execute_research_run(run_id: uuid.UUID) -> None:
                         "heading": section.get("heading"),
                         "content": section.get("content"),
                         "citations": citations,
+                        "verified": section.get("verified"),
+                        "unsupported_claims": section.get("unsupported_claims") or [],
                     }
                 )
 

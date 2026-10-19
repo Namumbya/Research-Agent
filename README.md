@@ -7,7 +7,7 @@ API service that turns a business research brief into a sourced, structured repo
 | Language | Python 3.12+ |
 | Packaging | [uv](https://docs.astral.sh/uv/) |
 | Orchestration | LangGraph |
-| LLM | OpenAI (optional OpenAI-compatible `OPENAI_BASE_URL`) |
+| LLM | Any OpenAI-compatible provider via `LLM_BASE_URL` (OpenAI, Gemini, Groq, DeepSeek, OpenRouter) |
 | Search | Tavily |
 | HTTP API | FastAPI |
 | Database | PostgreSQL |
@@ -19,6 +19,7 @@ API service that turns a business research brief into a sourced, structured repo
 - Plan searches, gather evidence via Tavily, synthesize a cited report with OpenAI.
 - Return structured JSON and Markdown, with source URLs.
 - Persist runs, sources, and reports in PostgreSQL.
+- Persist LangGraph checkpoints in PostgreSQL (`thread_id` = `run_id`) so interrupted runs can be resumed via `POST /v1/research/runs/{run_id}/resume`.
 
 ## Docs
 
@@ -39,7 +40,7 @@ Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/), Docker.
 
 ```bash
 cp .env.example .env
-# Set OPENAI_API_KEY, TAVILY_API_KEY, and API_KEYS (your own shared secret)
+# Set LLM_API_KEY, TAVILY_API_KEY, and API_KEYS (your own shared secret)
 uv sync
 docker compose up --build
 ```
@@ -77,4 +78,30 @@ curl -X POST http://localhost:8000/v1/research/runs \
 ```bash
 curl http://localhost:8000/v1/research/runs/RUN_ID -H "X-API-Key: YOUR_API_KEY"
 curl http://localhost:8000/v1/research/runs/RUN_ID/result -H "X-API-Key: YOUR_API_KEY"
+```
+
+### Research request body
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `topic` | Yes | Main subject or question to research. Must be at least 8 characters. |
+| `goals` | No | Specific questions the report should answer. |
+| `constraints` | No | Rules for the research, such as recent sources only or English only. |
+| `audience` | No | Intended reader, for example `general`, `strategy`, or `ops`. |
+| `depth` | No | Research depth: `quick`, `standard`, or `deep`. |
+| `seed_urls` | No | Optional starting URLs. Use `[]` when none are needed. |
+| `metadata` | No | Optional tracking data for your own systems. Use `{}` when not needed. |
+
+Example:
+
+```json
+{
+  "topic": "Mid-market CRM competitive landscape",
+  "goals": ["Top competitors", "Pricing signals"],
+  "constraints": ["English only"],
+  "audience": "strategy",
+  "depth": "quick",
+  "seed_urls": [],
+  "metadata": {}
+}
 ```
